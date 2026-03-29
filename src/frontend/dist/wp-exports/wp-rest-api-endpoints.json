@@ -1,0 +1,64 @@
+{
+  "description": "WordPress REST API endpoints used by this portfolio. Set WP_BASE_URL in App.tsx to your WordPress domain.",
+  "base_url": "https://iamprafulpatel.com",
+  "endpoints": {
+    "blog_listing": {
+      "url": "/wp-json/wp/v2/posts?_embed&per_page=9&status=publish",
+      "method": "GET",
+      "description": "Fetch latest 9 published posts with embedded featured image and author",
+      "fields_used": ["id", "title.rendered", "excerpt.rendered", "date", "slug", "_embedded.wp:featuredmedia[0].source_url", "_embedded.wp:term[0] (categories)"]
+    },
+    "blog_listing_paginated": {
+      "url": "/wp-json/wp/v2/posts?_embed&per_page=9&page={page}&status=publish",
+      "method": "GET",
+      "description": "Paginated post listing"
+    },
+    "blog_listing_by_category": {
+      "url": "/wp-json/wp/v2/posts?_embed&per_page=9&categories={category_id}&status=publish",
+      "method": "GET",
+      "description": "Posts filtered by category ID"
+    },
+    "single_post_by_id": {
+      "url": "/wp-json/wp/v2/posts/{id}?_embed",
+      "method": "GET",
+      "description": "Fetch single post by ID"
+    },
+    "single_post_by_slug": {
+      "url": "/wp-json/wp/v2/posts?slug={slug}&_embed",
+      "method": "GET",
+      "description": "Fetch single post by slug (returns array, use [0])"
+    },
+    "categories": {
+      "url": "/wp-json/wp/v2/categories?per_page=50",
+      "method": "GET",
+      "description": "All categories for filter tabs"
+    },
+    "acf_options": {
+      "url": "/wp-json/acf/v3/options/options",
+      "method": "GET",
+      "description": "ACF Options Page values (requires ACF PRO or ACF to REST API plugin)",
+      "required_plugins": ["Advanced Custom Fields PRO", "OR: ACF to REST API (free)"]
+    },
+    "contact_form_submission": {
+      "url": "/wp-json/contact-form-7/v1/contact-forms/{form_id}/feedback",
+      "method": "POST",
+      "description": "Submit contact form via Contact Form 7 REST API",
+      "required_plugins": ["Contact Form 7"],
+      "body_params": {
+        "your-name": "string",
+        "your-email": "email",
+        "your-subject": "string",
+        "your-message": "string"
+      }
+    }
+  },
+  "required_wordpress_plugins": [
+    "Advanced Custom Fields (ACF) - free or PRO",
+    "ACF to REST API (free) - to expose ACF options via REST",
+    "Contact Form 7 - for contact form submissions"
+  ],
+  "cors_setup": {
+    "description": "Add this to your WordPress theme's functions.php to allow REST API calls from external domains",
+    "code": "add_action('rest_api_init', function() { remove_filter('rest_pre_serve_request', 'rest_send_cors_headers'); add_filter('rest_pre_serve_request', function($value) { header('Access-Control-Allow-Origin: *'); header('Access-Control-Allow-Methods: GET, POST, OPTIONS'); header('Access-Control-Allow-Credentials: true'); return $value; }); }, 15);"
+  }
+}

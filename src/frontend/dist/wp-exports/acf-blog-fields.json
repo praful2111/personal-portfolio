@@ -1,0 +1,77 @@
+{
+  "description": "ACF Field Group: Blog Post Fields. Import via ACF > Tools > Import Field Groups.",
+  "acf_version": "5.12",
+  "field_groups": [
+    {
+      "key": "group_blog_post",
+      "title": "Blog Post Fields",
+      "fields": [
+        {
+          "key": "field_blog_subtitle",
+          "label": "Subtitle",
+          "name": "blog_subtitle",
+          "type": "text",
+          "placeholder": "Optional subtitle displayed below the title",
+          "required": 0
+        },
+        {
+          "key": "field_blog_read_time",
+          "label": "Read Time (minutes)",
+          "name": "blog_read_time",
+          "type": "number",
+          "min": 1,
+          "max": 60,
+          "default_value": 3,
+          "required": 0
+        },
+        {
+          "key": "field_blog_tags_custom",
+          "label": "Custom Tags",
+          "name": "blog_tags_custom",
+          "type": "text",
+          "placeholder": "Comma-separated tags e.g. WordPress, React, Headless",
+          "required": 0
+        },
+        {
+          "key": "field_blog_cta_text",
+          "label": "CTA Button Text",
+          "name": "blog_cta_text",
+          "type": "text",
+          "default_value": "Get In Touch",
+          "required": 0
+        },
+        {
+          "key": "field_blog_cta_url",
+          "label": "CTA Button URL",
+          "name": "blog_cta_url",
+          "type": "url",
+          "placeholder": "https://iamprafulpatel.com/#contact",
+          "required": 0
+        },
+        {
+          "key": "field_blog_seo_description",
+          "label": "SEO Meta Description",
+          "name": "blog_seo_description",
+          "type": "textarea",
+          "rows": 3,
+          "maxlength": 160,
+          "required": 0
+        }
+      ],
+      "location": [
+        [
+          {
+            "param": "post_type",
+            "operator": "==",
+            "value": "post"
+          }
+        ]
+      ],
+      "menu_order": 0,
+      "position": "normal",
+      "style": "default",
+      "label_placement": "top",
+      "active": true
+    }
+  ]
+}

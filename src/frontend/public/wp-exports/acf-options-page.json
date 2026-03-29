@@ -1,0 +1,43 @@
+{
+  "description": "ACF Options Page Fields for site-wide settings. Import via ACF > Tools > Import Field Groups. Requires ACF PRO or free Options Page plugin.",
+  "acf_version": "5.12",
+  "field_groups": [
+    {
+      "key": "group_site_options",
+      "title": "Site Settings",
+      "fields": [
+        { "key": "field_site_owner_name", "label": "Full Name", "name": "site_owner_name", "type": "text", "default_value": "Praful Patel", "required": 1 },
+        { "key": "field_site_tagline", "label": "Hero Tagline", "name": "site_tagline", "type": "text", "default_value": "Full Stack WordPress & React Developer", "required": 0 },
+        { "key": "field_site_bio", "label": "Short Bio", "name": "site_bio", "type": "textarea", "rows": 4, "required": 0 },
+        { "key": "field_site_email", "label": "Contact Email", "name": "site_email", "type": "email", "required": 1 },
+        { "key": "field_site_phone", "label": "Phone Number", "name": "site_phone", "type": "text", "required": 0 },
+        { "key": "field_site_location", "label": "Location", "name": "site_location", "type": "text", "default_value": "India", "required": 0 },
+        { "key": "field_social_github", "label": "GitHub URL", "name": "social_github", "type": "url", "default_value": "https://github.com/praful2111" },
+        { "key": "field_social_linkedin", "label": "LinkedIn URL", "name": "social_linkedin", "type": "url" },
+        { "key": "field_social_twitter", "label": "Twitter / X URL", "name": "social_twitter", "type": "url", "default_value": "https://x.com/praful2111" },
+        { "key": "field_social_facebook", "label": "Facebook URL", "name": "social_facebook", "type": "url", "default_value": "https://www.facebook.com/praful2111/" },
+        { "key": "field_social_instagram", "label": "Instagram URL", "name": "social_instagram", "type": "url", "default_value": "https://www.instagram.com/praful2111/" },
+        { "key": "field_social_wordpress_org", "label": "WordPress.org Profile URL", "name": "social_wordpress_org", "type": "url", "default_value": "https://profiles.wordpress.org/praful2111" },
+        { "key": "field_hero_profile_image", "label": "Hero Profile Image", "name": "hero_profile_image", "type": "image", "return_format": "url", "preview_size": "medium" },
+        { "key": "field_hero_resume_url", "label": "Resume / CV URL", "name": "hero_resume_url", "type": "url" },
+        { "key": "field_years_experience", "label": "Years of Experience", "name": "years_experience", "type": "number", "default_value": 10 },
+        { "key": "field_projects_completed", "label": "Projects Completed", "name": "projects_completed", "type": "number", "default_value": 200 },
+        { "key": "field_wordcamp_events", "label": "WordCamp Events Attended", "name": "wordcamp_events", "type": "number", "default_value": 8 }
+      ],
+      "location": [
+        [
+          {
+            "param": "options_page",
+            "operator": "==",
+            "value": "site-settings"
+          }
+        ]
+      ],
+      "menu_order": 0,
+      "position": "normal",
+      "style": "default",
+      "label_placement": "top",
+      "active": true
+    }
+  ]
+}
