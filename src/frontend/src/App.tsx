@@ -4,7 +4,76 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useActor } from "@/hooks/useActor";
 import { AnimatePresence, motion, useInView } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
+// ─── Mini Router ─────────────────────────────────────────────────────────────
+function useNavigate() {
+  return (path: string) => {
+    window.history.pushState({}, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+}
+function useLocation() {
+  const [pathname, setPathname] = useState(window.location.pathname);
+  useEffect(() => {
+    const handler = () => setPathname(window.location.pathname);
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, []);
+  return { pathname };
+}
+function useParams<T extends Record<string, string>>(): Partial<T> {
+  const { pathname } = useLocation();
+  const match = pathname.match(/^\/blog\/([^/]+)/);
+  return (match ? { slug: match[1] } : {}) as Partial<T>;
+}
+function Link({
+  to,
+  href,
+  children,
+  className,
+  onClick,
+}: {
+  to?: string;
+  href?: string;
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+}) {
+  const navigate = useNavigate();
+  const target = to ?? href ?? "#";
+  return (
+    <a
+      href={target}
+      className={className}
+      onClick={(e) => {
+        if (target.startsWith("#") || target.startsWith("http")) return;
+        e.preventDefault();
+        navigate(target);
+        onClick?.();
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+function Routes({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
+}
+function Route({ path, element }: { path: string; element: React.ReactNode }) {
+  const { pathname } = useLocation();
+  if (path === "/" && pathname === "/") return <>{element}</>;
+  if (path === "/blog" && pathname === "/blog") return <>{element}</>;
+  if (
+    path === "/blog/:slug" &&
+    pathname.startsWith("/blog/") &&
+    pathname !== "/blog/"
+  )
+    return <>{element}</>;
+  return null;
+}
+import { acf, acfArray, useWPPage } from "./hooks/useWordPress";
+import { WP_PAGE_IDS } from "./wp-config";
 
 // ─── WordPress Integration ────────────────────────────────────────────────────
 
@@ -48,29 +117,31 @@ function usePosts() {
   return { posts, loading, error };
 }
 
-function usePost(id: number | null) {
+function usePostBySlug(slug: string | undefined) {
   const [post, setPost] = useState<WPPost | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id === null) return;
+    if (!slug) return;
     setLoading(true);
     setPost(null);
-    fetch(`${WP_BASE_URL}/wp-json/wp/v2/posts/${id}?_embed`)
+    fetch(
+      `${WP_BASE_URL}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed`,
+    )
       .then((r) => {
         if (!r.ok) throw new Error("Failed to fetch post");
         return r.json();
       })
-      .then((data) => {
-        setPost(data);
+      .then((data: WPPost[]) => {
+        setPost(data[0] ?? null);
         setLoading(false);
       })
       .catch((e) => {
         setError(e.message);
         setLoading(false);
       });
-  }, [id]);
+  }, [slug]);
 
   return { post, loading, error };
 }
@@ -109,8 +180,11 @@ function BlogCardSkeleton() {
   );
 }
 
-function BlogSection({ onPostSelect }: { onPostSelect: (id: number) => void }) {
+function BlogSection({ limit }: { limit?: number }) {
+  const navigate = useNavigate();
   const { posts, loading, error } = usePosts();
+  const displayedPosts = limit ? posts.slice(0, limit) : posts;
+  const skeletonCount = limit ?? 6;
 
   return (
     <section id="blog" className="py-20 md:py-28 bg-background">
@@ -151,9 +225,11 @@ function BlogSection({ onPostSelect }: { onPostSelect: (id: number) => void }) {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
             data-ocid="blog.loading_state"
           >
-            {["s1", "s2", "s3", "s4", "s5", "s6"].map((k) => (
-              <BlogCardSkeleton key={k} />
-            ))}
+            {Array.from({ length: skeletonCount }, (_, i) => `s${i}`).map(
+              (k) => (
+                <BlogCardSkeleton key={k} />
+              ),
+            )}
           </div>
         )}
 
@@ -166,9 +242,9 @@ function BlogSection({ onPostSelect }: { onPostSelect: (id: number) => void }) {
           </div>
         )}
 
-        {!loading && !error && posts.length > 0 && (
+        {!loading && !error && displayedPosts.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {posts.map((post, i) => {
+            {displayedPosts.map((post, i) => {
               const featuredImg =
                 post._embedded?.["wp:featuredmedia"]?.[0]?.source_url;
               const altText =
@@ -187,7 +263,7 @@ function BlogSection({ onPostSelect }: { onPostSelect: (id: number) => void }) {
                   viewport={{ once: true, amount: 0.15 }}
                   transition={{ duration: 0.4, delay: i * 0.06 }}
                   className="group rounded-2xl overflow-hidden border border-border bg-card hover:border-primary hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col"
-                  onClick={() => onPostSelect(post.id)}
+                  onClick={() => navigate(`/blog/${post.slug}`)}
                   data-ocid={`blog.item.${i + 1}`}
                 >
                   <div className="h-48 overflow-hidden flex-shrink-0">
@@ -232,6 +308,19 @@ function BlogSection({ onPostSelect }: { onPostSelect: (id: number) => void }) {
             })}
           </div>
         )}
+        {!loading && !error && limit && posts.length > limit && (
+          <div className="flex justify-center mt-10">
+            <button
+              type="button"
+              onClick={() => navigate("/blog")}
+              className="px-8 py-3 rounded-full font-semibold text-base text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: "oklch(0.35 0.12 148)" }}
+              data-ocid="blog.view_all_button"
+            >
+              View All Posts →
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -255,12 +344,23 @@ function BlogDetailSkeleton() {
   );
 }
 
-function BlogDetail({
-  postId,
-  onBack,
-}: { postId: number; onBack: () => void }) {
-  const { post, loading, error } = usePost(postId);
+function BlogDetail() {
+  const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
+  const onBack = () => navigate("/blog");
+  const { post, loading, error } = usePostBySlug(slug);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (post?.title?.rendered) {
+      document.title = `${stripHtml(post.title.rendered)} | Praful Patel`;
+    } else {
+      document.title = "Blog | Praful Patel";
+    }
+    return () => {
+      document.title = "Praful Patel | WordPress & Full-Stack Developer";
+    };
+  }, [post?.title?.rendered]);
 
   useEffect(() => {
     if (contentRef.current && post?.content?.rendered) {
@@ -368,7 +468,7 @@ function WordPressIcon({ className = "w-10 h-10" }: { className?: string }) {
 function WooCommerceIcon({ className = "w-10 h-10" }: { className?: string }) {
   return (
     <img
-      src="https://cdn.simpleicons.org/woocommerce/96588A"
+      src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/woocommerce/woocommerce-original.svg"
       alt="WooCommerce"
       className={className}
     />
@@ -378,7 +478,7 @@ function WooCommerceIcon({ className = "w-10 h-10" }: { className?: string }) {
 function ShopifyIcon({ className = "w-10 h-10" }: { className?: string }) {
   return (
     <img
-      src="https://cdn.simpleicons.org/shopify/96BF48"
+      src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/shopify/shopify-original.svg"
       alt="Shopify"
       className={className}
     />
@@ -398,8 +498,8 @@ function TailwindIcon({ className = "w-10 h-10" }: { className?: string }) {
 function ReactIcon({ className = "w-10 h-10" }: { className?: string }) {
   return (
     <img
-      src="https://cdn.simpleicons.org/react/61DAFB"
-      alt="React"
+      src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/react/react-original.svg"
+      alt="React.js"
       className={className}
     />
   );
@@ -418,8 +518,8 @@ function AutomationIcon({ className = "w-10 h-10" }: { className?: string }) {
 function CmsIcon({ className = "w-10 h-10" }: { className?: string }) {
   return (
     <img
-      src="https://cdn.simpleicons.org/contentful/2478CC"
-      alt="Headless CMS"
+      src="https://cdn.simpleicons.org/contentstack/5B5FC7"
+      alt="ContentStack CMS"
       className={className}
     />
   );
@@ -429,7 +529,7 @@ function DevOpsIcon({ className = "w-10 h-10" }: { className?: string }) {
   return (
     <img
       src="https://cdn.simpleicons.org/cpanel/FF6C2C"
-      alt="cPanel DevOps"
+      alt="DevOps & Hosting"
       className={className}
     />
   );
@@ -599,6 +699,8 @@ const skills: SkillCard[] = [
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
+  const isHomePage = location.pathname === "/";
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -612,7 +714,7 @@ function Header() {
     { label: "Achievements", href: "#achievements" },
     { label: "Skills", href: "#skills" },
     { label: "Tech Stack", href: "#tech-stack" },
-    { label: "Blog", href: "#blog" },
+    { label: "Blog", href: "#blog", isBlog: true },
     { label: "Contact", href: "#contact" },
   ];
 
@@ -632,39 +734,82 @@ function Header() {
     >
       <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Brand */}
-        <button
-          type="button"
-          onClick={() => handleNavClick("#home")}
-          className="flex flex-col leading-none"
-          data-ocid="nav.link"
-        >
-          <span className="text-xs font-semibold tracking-[0.2em] text-white/60 uppercase">
-            Praful
-          </span>
-          <span className="text-lg font-bold tracking-[0.15em] text-white uppercase">
-            Patel
-          </span>
-        </button>
+        {isHomePage ? (
+          <button
+            type="button"
+            onClick={() => handleNavClick("#home")}
+            className="flex flex-col leading-none"
+            data-ocid="nav.link"
+          >
+            <span className="text-xs font-semibold tracking-[0.2em] text-white/60 uppercase">
+              Praful
+            </span>
+            <span className="text-lg font-bold tracking-[0.15em] text-white uppercase">
+              Patel
+            </span>
+          </button>
+        ) : (
+          <Link
+            to="/"
+            className="flex flex-col leading-none"
+            data-ocid="nav.link"
+          >
+            <span className="text-xs font-semibold tracking-[0.2em] text-white/60 uppercase">
+              Praful
+            </span>
+            <span className="text-lg font-bold tracking-[0.15em] text-white uppercase">
+              Patel
+            </span>
+          </Link>
+        )}
 
         {/* Desktop nav */}
         <nav
           className="hidden md:flex items-center gap-8"
           aria-label="Main navigation"
         >
-          {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              onClick={(e) => {
-                e.preventDefault();
-                handleNavClick(link.href);
-              }}
-              className="text-sm font-medium text-white/80 hover:text-white transition-colors"
-              data-ocid="nav.link"
-            >
-              {link.label}
-            </a>
-          ))}
+          {navLinks.map((link) =>
+            link.isBlog ? (
+              isHomePage ? (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleNavClick(link.href);
+                  }}
+                  className="text-sm font-medium text-white/80 hover:text-white transition-colors"
+                  data-ocid="nav.link"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.label}
+                  to="/blog"
+                  className="text-sm font-medium text-white/80 hover:text-white transition-colors"
+                  data-ocid="nav.link"
+                >
+                  {link.label}
+                </Link>
+              )
+            ) : (
+              <a
+                key={link.label}
+                href={isHomePage ? link.href : `/${link.href}`}
+                onClick={(e) => {
+                  if (isHomePage) {
+                    e.preventDefault();
+                    handleNavClick(link.href);
+                  }
+                }}
+                className="text-sm font-medium text-white/80 hover:text-white transition-colors"
+                data-ocid="nav.link"
+              >
+                {link.label}
+              </a>
+            ),
+          )}
           <a
             href="/resume.pdf"
             target="_blank"
@@ -700,20 +845,51 @@ function Header() {
             style={{ backgroundColor: "oklch(0.28 0.10 148)" }}
           >
             <nav className="flex flex-col px-6 py-4 gap-4">
-              {navLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleNavClick(link.href);
-                  }}
-                  className="text-sm font-medium text-white/80 hover:text-white py-2 transition-colors"
-                  data-ocid="nav.link"
-                >
-                  {link.label}
-                </a>
-              ))}
+              {navLinks.map((link) =>
+                link.isBlog ? (
+                  isHomePage ? (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleNavClick(link.href);
+                      }}
+                      className="text-sm font-medium text-white/80 hover:text-white py-2 transition-colors"
+                      data-ocid="nav.link"
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link
+                      key={link.label}
+                      to="/blog"
+                      onClick={() => setMenuOpen(false)}
+                      className="text-sm font-medium text-white/80 hover:text-white py-2 transition-colors"
+                      data-ocid="nav.link"
+                    >
+                      {link.label}
+                    </Link>
+                  )
+                ) : (
+                  <a
+                    key={link.label}
+                    href={isHomePage ? link.href : `/${link.href}`}
+                    onClick={(e) => {
+                      if (isHomePage) {
+                        e.preventDefault();
+                        handleNavClick(link.href);
+                      } else {
+                        setMenuOpen(false);
+                      }
+                    }}
+                    className="text-sm font-medium text-white/80 hover:text-white py-2 transition-colors"
+                    data-ocid="nav.link"
+                  >
+                    {link.label}
+                  </a>
+                ),
+              )}
               <a
                 href="/resume.pdf"
                 target="_blank"
@@ -732,6 +908,21 @@ function Header() {
 }
 
 function HeroSection() {
+  const { data: heroData } = useWPPage(WP_PAGE_IDS.hero);
+  const cyclingTitles = [
+    "WordPress Expert",
+    "React Developer",
+    "Full-Stack Developer",
+    "AI Automation Builder",
+  ];
+  const [cyclingTitleIndex, setCyclingTitleIndex] = useState(0);
+  const cyclingTitle = cyclingTitles[cyclingTitleIndex];
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCyclingTitleIndex((prev) => (prev + 1) % cyclingTitles.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
   return (
     <section id="home" className="pt-28 pb-20 md:pt-36 md:pb-28 bg-background">
       <div className="max-w-6xl mx-auto px-6">
@@ -788,21 +979,19 @@ function HeroSection() {
                 </div>
                 <div className="text-center">
                   <p className="text-white font-bold text-xl tracking-wide">
-                    Praful Patel
+                    {acf(heroData, "hero_name", "Praful Patel")}
                   </p>
                   <p className="text-white/60 text-sm mt-1">
-                    Full-Stack Web Developer
+                    {acf(heroData, "hero_title", "Full-Stack")}{" "}
+                    {acf(heroData, "hero_title_italic", "Web Developer")}
                   </p>
                 </div>
               </div>
               <div className="absolute bottom-6 right-6 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2">
                 <p className="text-white text-xs font-semibold">
-                  8+ Years Experience
+                  {acf(heroData, "hero_years_experience", "8+")} Years
+                  Experience
                 </p>
-                <div className="flex items-center gap-1 mt-1">
-                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  <p className="text-white/70 text-xs">Open to work</p>
-                </div>
               </div>
             </div>
           </motion.div>
@@ -815,22 +1004,38 @@ function HeroSection() {
             className="flex flex-col gap-5"
           >
             <p className="text-sm font-semibold tracking-widest text-muted-foreground uppercase">
-              👋 Hello, I'm Praful
+              {acf(heroData, "hero_greeting", "👋 Hello, I'm Praful")}
             </p>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground leading-tight">
-              Full-Stack{" "}
+              Hi, I'm a{" "}
               <span
-                className="font-display italic"
-                style={{ color: "oklch(0.35 0.12 148)" }}
+                className="relative inline-block"
+                style={{ minWidth: "14ch" }}
               >
-                Web Developer
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={cyclingTitle}
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -14 }}
+                    transition={{ duration: 0.38, ease: "easeInOut" }}
+                    className="font-display italic"
+                    style={{
+                      color: "oklch(0.35 0.12 148)",
+                      display: "inline-block",
+                    }}
+                  >
+                    {cyclingTitle}
+                  </motion.span>
+                </AnimatePresence>
               </span>
             </h1>
             <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-              Building powerful digital experiences with WordPress, React,
-              Next.js, and AI automation. From custom eCommerce stores to
-              headless CMS architectures — I deliver end-to-end web solutions
-              that scale.
+              {acf(
+                heroData,
+                "hero_description",
+                "Building powerful digital experiences with WordPress, React, Next.js, and AI automation. From custom eCommerce stores to headless CMS architectures — I deliver end-to-end web solutions that scale.",
+              )}
             </p>
             <div className="flex flex-wrap gap-4 mt-2">
               <Button
@@ -905,6 +1110,7 @@ function HighlightCard({
 }
 
 function AboutSection() {
+  const { data: aboutData } = useWPPage(WP_PAGE_IDS.about);
   const ref = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -919,7 +1125,7 @@ function AboutSection() {
     return () => observer.disconnect();
   }, []);
 
-  const highlights = [
+  const defaultHighlights = [
     {
       title: "Creative Digital Experiences",
       description:
@@ -930,7 +1136,7 @@ function AboutSection() {
     {
       title: "Empowering Team Leadership",
       description:
-        "With over 8 years of experience, inspires his team at Krishaweb, promoting innovation and continuous learning to achieve excellence in WordPress, React, and modern web development.",
+        "With over 8 years of experience, promoting innovation and continuous learning to achieve excellence in WordPress, React, and modern web development.",
       icon: "🚀",
       accentColor: "oklch(0.45 0.10 148)",
     },
@@ -950,12 +1156,30 @@ function AboutSection() {
     },
   ];
 
-  const quickFacts = [
+  const defaultQuickFacts = [
     { icon: "📍", label: "Based in India" },
     { icon: "💼", label: "8+ Years Experience" },
-    { icon: "🏢", label: "Krishaweb" },
     { icon: "🌐", label: "WordPress Community Organiser" },
+    { icon: "🎤", label: "WordCamp Speaker & Organiser" },
+    { icon: "🤝", label: "Available for Freelance" },
+    { icon: "🌍", label: "Remote-Friendly & Global Clients" },
+    { icon: "⚡", label: "Open Source Contributor" },
   ];
+
+  const highlights = acfArray(aboutData, "about_highlights", defaultHighlights);
+  const quickFacts = acfArray(
+    aboutData,
+    "about_quick_facts",
+    defaultQuickFacts,
+  );
+  const aboutTagsRaw = aboutData?.acf?.about_tags;
+  const dynamicTags =
+    typeof aboutTagsRaw === "string" && aboutTagsRaw.trim()
+      ? aboutTagsRaw
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : null;
 
   return (
     <section id="about" ref={ref} className="py-20 md:py-28 bg-background">
@@ -983,19 +1207,18 @@ function AboutSection() {
               className="flex flex-col gap-6 md:sticky md:top-24 md:self-start"
             >
               <p className="text-base text-muted-foreground leading-relaxed">
-                Praful Patel is a seasoned Full-Stack Web Developer with over 8
-                years of experience, leading projects at Krishaweb with a focus
-                on user-centric design, fostering creativity and collaboration
-                to deliver exceptional digital experiences across WordPress,
-                React, Next.js, and AI automation.
+                {acf(
+                  aboutData,
+                  "about_bio_para1",
+                  "Praful Patel is a seasoned Full-Stack Web Developer with over 8 years of experience, with a focus on user-centric design, fostering creativity and collaboration to deliver exceptional digital experiences across WordPress, React, Next.js, and AI automation.",
+                )}
               </p>
               <p className="text-base text-muted-foreground leading-relaxed">
-                Based in India, Praful has collaborated with clients across the
-                globe — from startups to established enterprises — delivering
-                tailored digital solutions. He is an active contributor to the
-                WordPress community, having organised and participated in
-                multiple WordCamp events, and is passionate about open-source
-                development.
+                {acf(
+                  aboutData,
+                  "about_bio_para2",
+                  "Based in India, Praful has collaborated with clients across the globe — from startups to established enterprises — delivering tailored digital solutions. He is an active contributor to the WordPress community, having organised and participated in multiple WordCamp events, and is passionate about open-source development.",
+                )}
               </p>
 
               {/* Quick Facts */}
@@ -1023,20 +1246,22 @@ function AboutSection() {
               </div>
 
               <div className="flex flex-wrap gap-3 mt-1">
-                {[
-                  "WordPress",
-                  "PHP",
-                  "WooCommerce",
-                  "Shopify",
-                  "Wix",
-                  "React.js",
-                  "Next.js",
-                  "Tailwind",
-                  "N8N",
-                  "ContentStack",
-                  "REST APIs",
-                  "cPanel",
-                ].map((tag) => (
+                {(
+                  dynamicTags ?? [
+                    "WordPress",
+                    "PHP",
+                    "WooCommerce",
+                    "Shopify",
+                    "Wix",
+                    "React.js",
+                    "Next.js",
+                    "Tailwind",
+                    "N8N",
+                    "ContentStack",
+                    "REST APIs",
+                    "cPanel",
+                  ]
+                ).map((tag) => (
                   <span
                     key={tag}
                     className="text-xs font-semibold px-3 py-1.5 rounded-full border"
@@ -1285,16 +1510,23 @@ function TimelineCard({
 }
 
 function AchievementsSection() {
+  const { data: achievementsData } = useWPPage(WP_PAGE_IDS.achievements);
   const statsRef = useRef<HTMLDivElement>(null);
   const statsInView = useInView(statsRef, { once: true, amount: 0.4 });
 
-  const stats = [
+  const defaultStats = [
     { value: 3, suffix: "+", label: "Events Organised" },
     { value: 5, suffix: "+", label: "Community Events" },
     { value: 8, suffix: "+", label: "Years in WordPress Community" },
   ];
+  const stats = acfArray(achievementsData, "stats", defaultStats).map(
+    (s: any) => ({
+      ...s,
+      value: Number(s.value),
+    }),
+  );
 
-  const timeline: TimelineEvent[] = [
+  const defaultTimeline: TimelineEvent[] = [
     {
       role: "Organiser",
       event: "WordCamp Ahmedabad 2025",
@@ -1327,6 +1559,22 @@ function AchievementsSection() {
     },
   ];
 
+  const timeline = acfArray(
+    achievementsData,
+    "timeline",
+    defaultTimeline,
+  ) as TimelineEvent[];
+  const wpProfileLabel = acf(
+    achievementsData,
+    "wp_profile_label",
+    "View WordPress.org Profile",
+  );
+  const sectionDesc = acf(
+    achievementsData,
+    "section_description",
+    "Active contributor to the WordPress community — organising events, sharing knowledge, and building connections across India.",
+  );
+
   return (
     <section
       id="achievements"
@@ -1349,8 +1597,7 @@ function AchievementsSection() {
             Achievements &amp; Community
           </h2>
           <p className="mt-4 text-muted-foreground text-base max-w-xl mx-auto">
-            Active contributor to the WordPress community — organising events,
-            sharing knowledge, and building connections across India.
+            {sectionDesc}
           </p>
         </motion.div>
 
@@ -1406,9 +1653,7 @@ function AchievementsSection() {
               <WordPressIcon className="w-9 h-9 text-white" />
             </div>
             <div className="flex-1 text-center sm:text-left">
-              <p className="text-white font-bold text-lg">
-                View WordPress.org Profile
-              </p>
+              <p className="text-white font-bold text-lg">{wpProfileLabel}</p>
               <p className="text-white/60 text-sm mt-1">
                 See contributions, plugins, and community activity on
                 wordpress.org/prafulpatel16
@@ -1450,14 +1695,59 @@ function SkillCardItem({ skill, index }: { skill: SkillCard; index: number }) {
         {skill.icon}
       </div>
       <h3 className="text-lg font-bold text-foreground">{skill.name}</h3>
-      <p className="text-sm text-muted-foreground leading-relaxed">
+      <p className="text-sm text-muted-foreground leading-relaxed flex-1">
         {skill.description}
       </p>
+      <button
+        type="button"
+        onClick={() =>
+          document
+            .querySelector("#contact")
+            ?.scrollIntoView({ behavior: "smooth" })
+        }
+        className="mt-2 text-sm font-semibold transition-opacity hover:opacity-80 self-start"
+        style={{ color: skill.color }}
+        data-ocid={`skills.card.contact_link.${index + 1}`}
+      >
+        Get in Touch →
+      </button>
     </motion.div>
   );
 }
 
 function SkillsSection() {
+  const { data: servicesData } = useWPPage(WP_PAGE_IDS.services);
+
+  const iconMap: Record<string, React.ReactNode> = {
+    wordpress: <WordPressIcon />,
+    woocommerce: <WooCommerceIcon />,
+    shopify: <ShopifyIcon />,
+    tailwindcss: <TailwindIcon />,
+    react: <ReactIcon />,
+    n8n: <AutomationIcon />,
+    contentful: <CmsIcon />,
+    cpanel: <DevOpsIcon />,
+  };
+
+  const dynamicServices = acfArray(servicesData, "services", skills).map(
+    (s: any) => ({
+      icon:
+        iconMap[s.icon_slug] ??
+        (s.icon_slug ? (
+          <img
+            src={`https://cdn.simpleicons.org/${s.icon_slug}`}
+            alt={s.name}
+            className="w-7 h-7"
+          />
+        ) : (
+          <DevOpsIcon />
+        )),
+      name: s.name ?? "",
+      description: s.description ?? "",
+      color: s.color ?? "#2d6a4f",
+    }),
+  );
+
   return (
     <section id="skills" className="py-20 md:py-28 bg-background">
       <div className="max-w-6xl mx-auto px-6">
@@ -1476,7 +1766,7 @@ function SkillsSection() {
           </h2>
         </motion.div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {skills.map((skill, i) => (
+          {dynamicServices.map((skill, i) => (
             <SkillCardItem key={skill.name} skill={skill} index={i} />
           ))}
         </div>
@@ -1673,6 +1963,7 @@ function TechStackSection() {
 }
 
 function ContactSection() {
+  const { data: contactData } = useWPPage(WP_PAGE_IDS.contact);
   const { actor } = useActor();
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [submitted, setSubmitted] = useState(false);
@@ -1722,7 +2013,7 @@ function ContactSection() {
                 Get in Touch
               </p>
               <h2 className="text-3xl md:text-4xl font-bold text-white">
-                Let's Connect
+                {acf(contactData, "contact_heading", "Let's Connect")}
               </h2>
             </div>
 
@@ -1879,10 +2170,10 @@ function ContactSection() {
                     Email
                   </p>
                   <a
-                    href="mailto:praful2111@gmail.com"
+                    href={`mailto:${acf(contactData, "contact_email", "praful2111@gmail.com")}`}
                     className="text-white font-medium text-sm hover:text-white/80 transition-colors"
                   >
-                    praful2111@gmail.com
+                    {acf(contactData, "contact_email", "praful2111@gmail.com")}
                   </a>
                 </div>
               </div>
@@ -1908,10 +2199,10 @@ function ContactSection() {
                     Phone
                   </p>
                   <a
-                    href="tel:+919898699824"
+                    href={`tel:${acf(contactData, "contact_phone", "+919898699824")}`}
                     className="text-white font-medium text-sm hover:text-white/80 transition-colors"
                   >
-                    +91 9898699824
+                    {acf(contactData, "contact_phone", "+91 9898699824")}
                   </a>
                 </div>
               </div>
@@ -2056,37 +2347,10 @@ function Footer() {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-export default function App() {
-  const [blogView, setBlogView] = useState<{
-    mode: "home" | "detail";
-    postId: number | null;
-  }>({ mode: "home", postId: null });
-
-  const handlePostSelect = useCallback((id: number) => {
-    setBlogView({ mode: "detail", postId: id });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+function HomePage() {
+  useEffect(() => {
+    document.title = "Praful Patel | WordPress & Full-Stack Developer";
   }, []);
-
-  const handleBackToBlog = useCallback(() => {
-    setBlogView({ mode: "home", postId: null });
-    setTimeout(() => {
-      const el = document.querySelector("#blog");
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    }, 100);
-  }, []);
-
-  if (blogView.mode === "detail" && blogView.postId !== null) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 pt-20">
-          <BlogDetail postId={blogView.postId} onBack={handleBackToBlog} />
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -2096,10 +2360,47 @@ export default function App() {
         <AchievementsSection />
         <SkillsSection />
         <TechStackSection />
-        <BlogSection onPostSelect={handlePostSelect} />
+        <BlogSection limit={3} />
         <ContactSection />
       </main>
       <Footer />
     </div>
+  );
+}
+
+function BlogListingPage() {
+  useEffect(() => {
+    document.title = "Blog & Insights | Praful Patel";
+  }, []);
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-1 pt-20">
+        <BlogSection />
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+function BlogDetailPage() {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-1 pt-20">
+        <BlogDetail />
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/blog" element={<BlogListingPage />} />
+      <Route path="/blog/:slug" element={<BlogDetailPage />} />
+    </Routes>
   );
 }

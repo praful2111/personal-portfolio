@@ -1,43 +1,118 @@
 {
-  "description": "ACF Options Page Fields for site-wide settings. Import via ACF > Tools > Import Field Groups. Requires ACF PRO or free Options Page plugin.",
-  "acf_version": "5.12",
-  "field_groups": [
+  "key": "group_portfolio_options",
+  "title": "Portfolio Options Page Fields",
+  "fields": [
     {
-      "key": "group_site_options",
-      "title": "Site Settings",
-      "fields": [
-        { "key": "field_site_owner_name", "label": "Full Name", "name": "site_owner_name", "type": "text", "default_value": "Praful Patel", "required": 1 },
-        { "key": "field_site_tagline", "label": "Hero Tagline", "name": "site_tagline", "type": "text", "default_value": "Full Stack WordPress & React Developer", "required": 0 },
-        { "key": "field_site_bio", "label": "Short Bio", "name": "site_bio", "type": "textarea", "rows": 4, "required": 0 },
-        { "key": "field_site_email", "label": "Contact Email", "name": "site_email", "type": "email", "required": 1 },
-        { "key": "field_site_phone", "label": "Phone Number", "name": "site_phone", "type": "text", "required": 0 },
-        { "key": "field_site_location", "label": "Location", "name": "site_location", "type": "text", "default_value": "India", "required": 0 },
-        { "key": "field_social_github", "label": "GitHub URL", "name": "social_github", "type": "url", "default_value": "https://github.com/praful2111" },
-        { "key": "field_social_linkedin", "label": "LinkedIn URL", "name": "social_linkedin", "type": "url" },
-        { "key": "field_social_twitter", "label": "Twitter / X URL", "name": "social_twitter", "type": "url", "default_value": "https://x.com/praful2111" },
-        { "key": "field_social_facebook", "label": "Facebook URL", "name": "social_facebook", "type": "url", "default_value": "https://www.facebook.com/praful2111/" },
-        { "key": "field_social_instagram", "label": "Instagram URL", "name": "social_instagram", "type": "url", "default_value": "https://www.instagram.com/praful2111/" },
-        { "key": "field_social_wordpress_org", "label": "WordPress.org Profile URL", "name": "social_wordpress_org", "type": "url", "default_value": "https://profiles.wordpress.org/praful2111" },
-        { "key": "field_hero_profile_image", "label": "Hero Profile Image", "name": "hero_profile_image", "type": "image", "return_format": "url", "preview_size": "medium" },
-        { "key": "field_hero_resume_url", "label": "Resume / CV URL", "name": "hero_resume_url", "type": "url" },
-        { "key": "field_years_experience", "label": "Years of Experience", "name": "years_experience", "type": "number", "default_value": 10 },
-        { "key": "field_projects_completed", "label": "Projects Completed", "name": "projects_completed", "type": "number", "default_value": 200 },
-        { "key": "field_wordcamp_events", "label": "WordCamp Events Attended", "name": "wordcamp_events", "type": "number", "default_value": 8 }
-      ],
-      "location": [
-        [
-          {
-            "param": "options_page",
-            "operator": "==",
-            "value": "site-settings"
-          }
-        ]
-      ],
-      "menu_order": 0,
-      "position": "normal",
-      "style": "default",
-      "label_placement": "top",
-      "active": true
+      "key": "field_hero_group",
+      "label": "Hero Section",
+      "name": "hero_section",
+      "type": "group",
+      "sub_fields": [
+        { "key": "field_hero_greeting", "label": "Greeting Text", "name": "hero_greeting", "type": "text", "default_value": "👋 Hello, I'm Praful" },
+        { "key": "field_hero_name", "label": "Full Name", "name": "hero_name", "type": "text", "default_value": "Praful Patel" },
+        { "key": "field_hero_title", "label": "Title (non-italic)", "name": "hero_title", "type": "text", "default_value": "Full-Stack" },
+        { "key": "field_hero_title_italic", "label": "Title (italic)", "name": "hero_title_italic", "type": "text", "default_value": "Web Developer" },
+        { "key": "field_hero_description", "label": "Hero Description", "name": "hero_description", "type": "textarea", "rows": 3 },
+        { "key": "field_hero_years", "label": "Years of Experience", "name": "hero_years_experience", "type": "text", "default_value": "8+" },
+        { "key": "field_hero_cta_primary", "label": "Primary CTA Label", "name": "hero_cta_primary", "type": "text", "default_value": "Explore My Skills" },
+        { "key": "field_hero_cta_secondary", "label": "Secondary CTA Label", "name": "hero_cta_secondary", "type": "text", "default_value": "Get in Touch" }
+      ]
+    },
+    {
+      "key": "field_about_group",
+      "label": "About Section",
+      "name": "about_section",
+      "type": "group",
+      "sub_fields": [
+        { "key": "field_about_bio1", "label": "Bio Paragraph 1", "name": "about_bio_para1", "type": "textarea", "rows": 4 },
+        { "key": "field_about_bio2", "label": "Bio Paragraph 2", "name": "about_bio_para2", "type": "textarea", "rows": 4 },
+        { "key": "field_about_tags", "label": "Skill Tags (comma-separated)", "name": "about_tags", "type": "textarea", "instructions": "e.g. WordPress, PHP, React.js, WooCommerce" },
+        {
+          "key": "field_about_quick_facts",
+          "label": "Quick Facts",
+          "name": "about_quick_facts",
+          "type": "repeater",
+          "layout": "table",
+          "sub_fields": [
+            { "key": "field_fact_icon", "label": "Icon (emoji)", "name": "icon", "type": "text" },
+            { "key": "field_fact_label", "label": "Label", "name": "label", "type": "text" }
+          ],
+          "default_value": [
+            { "icon": "📍", "label": "Based in India" },
+            { "icon": "💼", "label": "8+ Years Experience" },
+            { "icon": "🌐", "label": "WordPress Community Organiser" },
+            { "icon": "🎤", "label": "WordCamp Speaker & Organiser" },
+            { "icon": "🤝", "label": "Available for Freelance" },
+            { "icon": "🌍", "label": "Remote-Friendly & Global Clients" },
+            { "icon": "⚡", "label": "Open Source Contributor" }
+          ]
+        },
+        {
+          "key": "field_about_highlights",
+          "label": "Highlight Cards",
+          "name": "about_highlights",
+          "type": "repeater",
+          "layout": "block",
+          "sub_fields": [
+            { "key": "field_hl_title", "label": "Title", "name": "title", "type": "text" },
+            { "key": "field_hl_description", "label": "Description", "name": "description", "type": "textarea", "rows": 3 },
+            { "key": "field_hl_icon", "label": "Icon (emoji)", "name": "icon", "type": "text" },
+            { "key": "field_hl_color", "label": "Accent Color (oklch string)", "name": "accentColor", "type": "text" }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "field_achievements_group",
+      "label": "Achievements Section",
+      "name": "achievements_section",
+      "type": "group",
+      "sub_fields": [
+        { "key": "field_ach_description", "label": "Description", "name": "achievements_description", "type": "textarea", "rows": 3 },
+        {
+          "key": "field_ach_stats",
+          "label": "Stats",
+          "name": "achievements_stats",
+          "type": "repeater",
+          "layout": "table",
+          "sub_fields": [
+            { "key": "field_stat_value", "label": "Value", "name": "value", "type": "text" },
+            { "key": "field_stat_label", "label": "Label", "name": "label", "type": "text" }
+          ]
+        },
+        {
+          "key": "field_ach_timeline",
+          "label": "Timeline Events",
+          "name": "achievements_timeline",
+          "type": "repeater",
+          "layout": "block",
+          "sub_fields": [
+            { "key": "field_tl_year", "label": "Year", "name": "year", "type": "text" },
+            { "key": "field_tl_title", "label": "Title", "name": "title", "type": "text" },
+            { "key": "field_tl_description", "label": "Description", "name": "description", "type": "textarea", "rows": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "field_contact_group",
+      "label": "Contact Section",
+      "name": "contact_section",
+      "type": "group",
+      "sub_fields": [
+        { "key": "field_contact_heading", "label": "Section Heading", "name": "contact_heading", "type": "text", "default_value": "Let's Work Together" },
+        { "key": "field_contact_email", "label": "Email", "name": "contact_email", "type": "email" },
+        { "key": "field_contact_phone", "label": "Phone", "name": "contact_phone", "type": "text" }
+      ]
     }
+  ],
+  "location": [
+    [
+      {
+        "param": "options_page",
+        "operator": "==",
+        "value": "portfolio-settings"
+      }
+    ]
   ]
 }

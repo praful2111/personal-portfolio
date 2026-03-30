@@ -1,0 +1,65 @@
+{
+  "key": "group_services_section",
+  "title": "Services Section Fields",
+  "fields": [
+    {
+      "key": "field_services_repeater",
+      "label": "Services",
+      "name": "services",
+      "type": "repeater",
+      "instructions": "Add each service/skill card. icon_slug must match a SimpleIcons or devicon slug.",
+      "min": 1,
+      "max": 12,
+      "layout": "table",
+      "sub_fields": [
+        {
+          "key": "field_service_name",
+          "label": "Service Name",
+          "name": "name",
+          "type": "text",
+          "instructions": "e.g. WordPress Development"
+        },
+        {
+          "key": "field_service_description",
+          "label": "Description",
+          "name": "description",
+          "type": "textarea",
+          "rows": 3
+        },
+        {
+          "key": "field_service_icon_slug",
+          "label": "Icon Slug",
+          "name": "icon_slug",
+          "type": "text",
+          "instructions": "Options: wordpress, woocommerce, shopify, tailwindcss, react, n8n, contentful, cpanel"
+        },
+        {
+          "key": "field_service_color",
+          "label": "Accent Color (hex)",
+          "name": "color",
+          "type": "color_picker",
+          "instructions": "Card accent color, e.g. #2d6a4f"
+        }
+      ]
+    }
+  ],
+  "location": [
+    [
+      {
+        "param": "options_page",
+        "operator": "==",
+        "value": "portfolio-settings"
+      }
+    ]
+  ],
+  "default_services": [
+    { "name": "WordPress Development", "description": "Expert in theme and plugin development, custom post types, and WooCommerce.", "icon_slug": "wordpress", "color": "#2d6a4f" },
+    { "name": "WooCommerce & eCommerce", "description": "Full-featured WooCommerce stores with payment gateways and performance optimization.", "icon_slug": "woocommerce", "color": "#b5860d" },
+    { "name": "Shopify & Wix", "description": "Shopify theme development, app integrations, and Wix site builds.", "icon_slug": "shopify", "color": "#40916c" },
+    { "name": "HTML / CSS Frameworks", "description": "Tailwind CSS, Bootstrap, and pixel-perfect responsive layouts.", "icon_slug": "tailwindcss", "color": "#52b788" },
+    { "name": "React.js & Next.js", "description": "Dynamic UIs with React and SSR/SSG apps with Next.js.", "icon_slug": "react", "color": "#c9a227" },
+    { "name": "AI & Automation", "description": "N8N, Make, GoHighLevel automation workflows and custom webhooks.", "icon_slug": "n8n", "color": "#b5860d" },
+    { "name": "Headless CMS", "description": "ContentStack, Contentful with React/Next.js frontend delivery.", "icon_slug": "contentful", "color": "#2d6a4f" },
+    { "name": "DevOps & Hosting", "description": "cPanel, cloud servers, ManageWP environments, DNS and deployment.", "icon_slug": "cpanel", "color": "#40916c" }
+  ]
+}
